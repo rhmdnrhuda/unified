@@ -1,0 +1,123 @@
+basePath: /api
+definitions:
+  entity.MessageRequest:
+    properties:
+      message:
+        type: string
+      user_id:
+        type: string
+    type: object
+  entity.TalentRequest:
+    properties:
+      calendar_url:
+        type: string
+      id:
+        type: integer
+      major:
+        type: string
+      name:
+        type: string
+      status:
+        type: string
+      university:
+        type: string
+    type: object
+  http.BaseResponse:
+    properties:
+      code:
+        type: string
+      data: {}
+      error:
+        example: message
+        type: string
+      server_time:
+        type: integer
+    type: object
+info:
+  contact: {}
+  description: Using a translation service as an example
+  title: Go Clean Template API
+  version: "1.0"
+paths:
+  /message:
+    post:
+      consumes:
+      - application/json
+      description: Receive new message in the system.
+      operationId: Message
+      parameters:
+      - description: The message request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/entity.MessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.BaseResponse'
+      summary: Receive message
+      tags:
+      - Message Handler
+  /talent/create:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new talent in the system.
+      operationId: createTalent
+      parameters:
+      - description: The talent request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/entity.TalentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.BaseResponse'
+      summary: Create a new talent
+      tags:
+      - Talent Handler
+  /talent/update:
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing talent in the system.
+      operationId: updateTalent
+      parameters:
+      - description: The talent request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/entity.TalentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.BaseResponse'
+      summary: Update an existing talent
+      tags:
+      - Talent Handler
+swagger: "2.0"
