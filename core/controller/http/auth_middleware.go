@@ -3,7 +3,7 @@ package http
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/temukan-co/monolith/config"
+	"github.com/rhmdnrhuda/unified/config"
 	"net/http"
 	"time"
 )

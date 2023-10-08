@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"github.com/temukan-co/monolith/config"
-	"github.com/temukan-co/monolith/core/app"
+	"github.com/rhmdnrhuda/unified/config"
+	"github.com/rhmdnrhuda/unified/core/app"
 )
 
 func main() {

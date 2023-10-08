@@ -1,6 +1,6 @@
 linters-settings:
   gci:
-    local-prefixes: github.com/temukan-co/monolith
+    local-prefixes: github.com/unified
   dupl:
     threshold: 100
   errorlint:

@@ -2,10 +2,11 @@
 package http
 
 import (
-	"github.com/temukan-co/monolith/config"
-	"github.com/temukan-co/monolith/core/repository/outbound"
-	"github.com/temukan-co/monolith/core/repository/postgre"
-	"github.com/temukan-co/monolith/pkg/postgres"
+	"github.com/rhmdnrhuda/unified/config"
+	"github.com/rhmdnrhuda/unified/core/repository/cache"
+	"github.com/rhmdnrhuda/unified/core/repository/outbound"
+	"github.com/rhmdnrhuda/unified/core/repository/postgre"
+	"github.com/rhmdnrhuda/unified/pkg/postgres"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -13,10 +14,10 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	"github.com/temukan-co/monolith/core/usecase"
+	"github.com/rhmdnrhuda/unified/core/usecase"
 	// Swagger docs.
-	_ "github.com/temukan-co/monolith/docs"
-	"github.com/temukan-co/monolith/pkg/logger"
+	_ "github.com/rhmdnrhuda/unified/docs"
+	"github.com/rhmdnrhuda/unified/pkg/logger"
 )
 
 // NewRouter -.
@@ -46,7 +47,8 @@ func NewRouter(handler *gin.Engine, l logger.Interface, pg *postgres.Postgres, c
 		// New Talent Routes
 		NewTalentRoutes(h, usecase.NewTalentUseCase(postgre.NewTalentRepository(pg), l), l, cfg)
 
-		NewMessageRoutes(h, usecase.NewMessageUseCase(outbound.NewVertexOutbound(cfg)), l)
+		NewMessageRoutes(h, usecase.NewMessageUseCase(outbound.NewVertexOutbound(cfg), outbound.NewAdaOutbound(cfg),
+			cache.NewCacheCommon(), postgre.NewUserRepository(pg), l), l)
 	}
 
 }

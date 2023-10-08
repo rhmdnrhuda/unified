@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/pgxscan"
-	"github.com/temukan-co/monolith/core/entity"
+	"github.com/rhmdnrhuda/unified/core/entity"
 	"time"
 
-	"github.com/temukan-co/monolith/pkg/postgres"
+	"github.com/rhmdnrhuda/unified/pkg/postgres"
 )
 
 func NewTalentRepository(pg *postgres.Postgres) *TalentRepository {

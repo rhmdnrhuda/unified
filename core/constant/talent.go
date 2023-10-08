@@ -1,6 +1,6 @@
 package constant
 
-import "github.com/temukan-co/monolith/core/entity"
+import "github.com/rhmdnrhuda/unified/core/entity"
 
 const (
 	Chat           = 1

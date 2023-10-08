@@ -2,10 +2,10 @@ package http
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/temukan-co/monolith/config"
-	"github.com/temukan-co/monolith/core/entity"
-	"github.com/temukan-co/monolith/core/usecase"
-	"github.com/temukan-co/monolith/pkg/logger"
+	"github.com/rhmdnrhuda/unified/config"
+	"github.com/rhmdnrhuda/unified/core/entity"
+	"github.com/rhmdnrhuda/unified/core/usecase"
+	"github.com/rhmdnrhuda/unified/pkg/logger"
 	"net/http"
 	"time"
 )

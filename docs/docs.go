@@ -140,13 +140,48 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "entity.DataRequest": {
+            "type": "object",
+            "properties": {
+                "custName": {
+                    "type": "string"
+                },
+                "custNo": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "timeStamp": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
         "entity.MessageRequest": {
             "type": "object",
             "properties": {
-                "message": {
+                "accountName": {
                     "type": "string"
                 },
-                "user_id": {
+                "accountNo": {
+                    "type": "string"
+                },
+                "data": {
+                    "$ref": "#/definitions/entity.DataRequest"
+                },
+                "eventType": {
+                    "type": "string"
+                },
+                "fromNo": {
+                    "type": "string"
+                },
+                "platform": {
                     "type": "string"
                 }
             }

@@ -3,17 +3,17 @@ package app
 
 import (
 	"fmt"
-	v1 "github.com/temukan-co/monolith/core/controller/http"
+	v1 "github.com/rhmdnrhuda/unified/core/controller/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/temukan-co/monolith/config"
-	"github.com/temukan-co/monolith/pkg/httpserver"
-	"github.com/temukan-co/monolith/pkg/logger"
-	"github.com/temukan-co/monolith/pkg/postgres"
+	"github.com/rhmdnrhuda/unified/config"
+	"github.com/rhmdnrhuda/unified/pkg/httpserver"
+	"github.com/rhmdnrhuda/unified/pkg/logger"
+	"github.com/rhmdnrhuda/unified/pkg/postgres"
 )
 
 // Run creates objects via constructors.

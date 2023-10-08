@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/common/log"
-	"github.com/temukan-co/monolith/config"
-	main_app "github.com/temukan-co/monolith/core/app"
-	"github.com/temukan-co/monolith/pkg/logger"
-	"github.com/temukan-co/monolith/pkg/postgres"
+	"github.com/rhmdnrhuda/unified/config"
+	main_app "github.com/rhmdnrhuda/unified/core/app"
+	"github.com/rhmdnrhuda/unified/pkg/logger"
+	"github.com/rhmdnrhuda/unified/pkg/postgres"
 	"net/http"
 )
 

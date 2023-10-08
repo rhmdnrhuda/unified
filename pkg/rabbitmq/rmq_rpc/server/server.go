@@ -7,8 +7,8 @@ import (
 
 	"github.com/streadway/amqp"
 
-	"github.com/temukan-co/monolith/pkg/logger"
-	rmqrpc "github.com/temukan-co/monolith/pkg/rabbitmq/rmq_rpc"
+	"github.com/rhmdnrhuda/unified/pkg/logger"
+	rmqrpc "github.com/rhmdnrhuda/unified/pkg/rabbitmq/rmq_rpc"
 )
 
 const (

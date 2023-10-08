@@ -2,8 +2,8 @@ package usecase
 
 import (
 	"context"
-	"github.com/temukan-co/monolith/core/entity"
-	"github.com/temukan-co/monolith/pkg/logger"
+	"github.com/rhmdnrhuda/unified/core/entity"
+	"github.com/rhmdnrhuda/unified/pkg/logger"
 )
 
 type TalentUseCase struct {

@@ -3,8 +3,9 @@ package usecase
 
 import (
 	"context"
+	"time"
 
-	"github.com/temukan-co/monolith/core/entity"
+	"github.com/rhmdnrhuda/unified/core/entity"
 )
 
 //go:generate mockgen -source=interfaces.go -destination=./mocks_test.go -package=usecase_test
@@ -25,11 +26,28 @@ type (
 
 	// Vertex
 	VertexOutBound interface {
-		DoCallVertexAPIChat(ctx context.Context, request entity.BisonChatRequest) (*entity.BisonChatResponse, error)
+		DoCallVertexAPIChat(ctx context.Context, request entity.BisonChatRequest, token string) (*entity.BisonChatResponse, error)
+		DoCallVertexAPIText(ctx context.Context, request entity.BisonTextRequest, token string) (*entity.BisonTextResponse, error)
+	}
+
+	AdaOutBound interface {
+		SendMessage(ctx context.Context, request entity.AdaRequest) error
+		SendButton(ctx context.Context, req entity.AdaButtonRequest) error
 	}
 
 	// Message
 	Message interface {
 		ProcessMessage(ctx context.Context, req entity.MessageRequest) (string, error)
+	}
+
+	UserRepository interface {
+		Create(ctx context.Context, data *entity.User) error
+		Update(ctx context.Context, data *entity.User) error
+		FindUserByNumber(ctx context.Context, number string) (entity.User, error)
+	}
+
+	Cache interface {
+		Set(key, token string, duration time.Duration)
+		Get(key string) string
 	}
 )

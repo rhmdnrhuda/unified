@@ -10,8 +10,19 @@ type BisonChatResponse struct {
 	Metadata    interface{}  `json:"metadata"`
 }
 
+type BisonTextRequest struct {
+	Instances  []InstanceBisonText `json:"instances"`
+	Parameters Parameter           `json:"parameters"`
+}
+
+type BisonTextResponse struct {
+	Predictions []Prediction `json:"predictions"`
+	Metadata    interface{}  `json:"metadata"`
+}
+
 type Prediction struct {
-	Candidates []Message `json:"candidates"`
+	Candidates []Message `json:"candidates,omitempty"`
+	Content    string    `json:"content,omitempty"`
 }
 
 type Parameter struct {
@@ -25,6 +36,10 @@ type Instance struct {
 	Context  string    `json:"context"`
 	Examples []Example `json:"examples"`
 	Messages []Message `json:"messages"`
+}
+
+type InstanceBisonText struct {
+	Prompt string `json:"prompt"`
 }
 
 type Example struct {

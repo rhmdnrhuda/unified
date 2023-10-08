@@ -1,10 +1,33 @@
 basePath: /api
 definitions:
+  entity.DataRequest:
+    properties:
+      custName:
+        type: string
+      custNo:
+        type: string
+      id:
+        type: string
+      text:
+        type: string
+      timeStamp:
+        type: string
+      type:
+        type: string
+    type: object
   entity.MessageRequest:
     properties:
-      message:
+      accountName:
         type: string
-      user_id:
+      accountNo:
+        type: string
+      data:
+        $ref: '#/definitions/entity.DataRequest'
+      eventType:
+        type: string
+      fromNo:
+        type: string
+      platform:
         type: string
     type: object
   entity.TalentRequest:

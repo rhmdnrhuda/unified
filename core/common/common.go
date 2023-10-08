@@ -3,51 +3,37 @@ package common
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	_ "github.com/gin-gonic/gin"
-	"github.com/temukan-co/monolith/core/entity"
+	"github.com/rhmdnrhuda/unified/core/entity"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
 )
 
-func FormatIDR(amount *int64) string {
-	if amount == nil {
-		return ""
-	} else if *amount == 0 {
-		return "Gratis"
+func PrepareMessage(req entity.MessageRequest, message, messageType string) entity.AdaRequest {
+	if messageType == "" {
+		messageType = "text"
 	}
-
-	// Convert the amount to a string
-	amountStr := strconv.FormatInt(*amount, 10)
-
-	// Determine the length of the amount string
-	length := len(amountStr)
-
-	// Create a formatted string with IDR format
-	formatted := "IDR "
-	for i := 0; i < length; i++ {
-		formatted += string(amountStr[i])
-		if (length-i-1)%3 == 0 && i != length-1 {
-			formatted += "."
-		}
+	return entity.AdaRequest{
+		Platform: req.Platform,
+		From:     req.AccountNo,
+		To:       req.FromNo,
+		Type:     messageType,
+		Text:     message,
 	}
-
-	return formatted
 }
 
-func DoCommonHeader(c *gin.Context) entity.MandatoryRequest {
-	userID, _ := c.Get("user_id")
-	email, _ := c.Get("email")
-	name, _ := c.Get("name")
-	version := c.GetHeader("version")
-
-	return entity.MandatoryRequest{
-		UserID:  ToInt64(userID),
-		Email:   ToString(email),
-		Name:    ToString(name),
-		Version: ToInt64(version),
+func PrepareMessageButton(req entity.MessageRequest, message, header, footer string, buttons []string) entity.AdaButtonRequest {
+	return entity.AdaButtonRequest{
+		Platform:   req.Platform,
+		From:       req.AccountNo,
+		To:         req.FromNo,
+		Text:       message,
+		HeaderType: "text",
+		Header:     header,
+		Footer:     footer,
+		Buttons:    buttons,
 	}
 }
 

@@ -2,10 +2,11 @@ package http
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/temukan-co/monolith/core/entity"
-	"github.com/temukan-co/monolith/core/usecase"
-	"github.com/temukan-co/monolith/pkg/logger"
+	"github.com/rhmdnrhuda/unified/core/entity"
+	"github.com/rhmdnrhuda/unified/core/usecase"
+	"github.com/rhmdnrhuda/unified/pkg/logger"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -21,6 +22,7 @@ func NewMessageRoutes(handler *gin.RouterGroup, uc usecase.Message, l logger.Int
 	r := messageRoutes{uc: uc, log: l}
 	h := handler.Group("message")
 	{
+		h.POST("/webhook", r.receiveMessage)
 		h.POST("", r.receiveMessage)
 	}
 }
@@ -41,6 +43,10 @@ func (r *messageRoutes) receiveMessage(c *gin.Context) {
 	if err != nil {
 		r.log.Error(err, "http - createTalentHandler - ShouldBindJSON")
 		errorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if !strings.EqualFold(request.EventType, "Message") {
 		return
 	}
 

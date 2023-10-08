@@ -55,6 +55,8 @@ type (
 		XenditAPISecret string `env-required:"true" env:"XENDIT_API_SECRET"`
 
 		AlertID int64 `env:"ALERT_ID"`
+
+		AdaAPISecret string `env-required:"true" env:"ADA_API_SECRET"`
 	}
 
 	OutBound struct {
@@ -62,6 +64,7 @@ type (
 		VertexURL   string `env-required:"true" env:"VERTEX_URL"`
 		ChatModel   string `env-required:"true" env:"VERTEX_MODEL_CHAT"`
 		TextModel   string `env-required:"true" env:"VERTEX_MODEL_TEXT"`
+		AdaHostURL  string `env-required:"true" env:"ADA_HOST_URL"`
 	}
 
 	Command struct {
