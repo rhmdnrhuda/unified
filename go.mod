@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/Eun/go-hit v0.5.23
-	github.com/Masterminds/squirrel v1.5.2
+	github.com/Masterminds/squirrel v1.5.4
 	github.com/georgysavva/scany v1.2.1
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.1
