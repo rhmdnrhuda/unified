@@ -43,3 +43,9 @@ type UserTemporaryData struct {
 	MajorPreferences      []string `json:"major_preferences"`
 	Feature               string   `json:"feature"`
 }
+
+type MessageResponse struct {
+	//{"status":200,"errorCode":0,"message":"Success","data":["c607f10b-de9c-4be0-8409-71ffd1ecea3d"]}
+	Status int64    `json:"status"`
+	Data   []string `json:"data"`
+}

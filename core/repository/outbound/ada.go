@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/rhmdnrhuda/unified/config"
 	"github.com/rhmdnrhuda/unified/core/entity"
-	"io"
 	"net/http"
 	"time"
 )
@@ -36,8 +35,8 @@ func (a *AdaOutbound) SendMessage(ctx context.Context, request entity.AdaRequest
 	return nil
 }
 
-func (a *AdaOutbound) SendButton(ctx context.Context, req entity.AdaButtonRequest) error {
-	_, err := a.doCallApi(ctx, entity.AdaButtonRequest{
+func (a *AdaOutbound) SendMessageButton(ctx context.Context, req entity.AdaButtonRequest) (string, error) {
+	res, err := a.doCallApi(ctx, entity.AdaButtonRequest{
 		Platform:   req.Platform,
 		From:       req.From,
 		To:         req.To,
@@ -48,19 +47,28 @@ func (a *AdaOutbound) SendButton(ctx context.Context, req entity.AdaButtonReques
 		Footer:     req.Footer,
 		Buttons:    req.Buttons,
 	})
+	if err != nil {
+		return "", err
+	}
 
-	return err
+	if len(res.Data) <= 0 {
+		return "", err
+	}
+
+	return res.Data[0], nil
 }
 
-func (a *AdaOutbound) doCallApi(ctx context.Context, request interface{}) (io.ReadCloser, error) {
+func (a *AdaOutbound) doCallApi(ctx context.Context, request interface{}) (entity.MessageResponse, error) {
+	var response entity.MessageResponse
+
 	jsonRequest, err := json.Marshal(request)
 	if err != nil {
-		return nil, err
+		return response, err
 	}
 
 	req, err := http.NewRequest(http.MethodPost, a.cfg.AdaHostURL, bytes.NewReader(jsonRequest))
 	if err != nil {
-		return nil, err
+		return response, err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -69,14 +77,18 @@ func (a *AdaOutbound) doCallApi(ctx context.Context, request interface{}) (io.Re
 
 	resp, err := a.client.Do(req)
 	if err != nil {
-		return nil, err
+		return response, err
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New(fmt.Sprintf("%d", resp.StatusCode))
+		return response, errors.New(fmt.Sprintf("%d", resp.StatusCode))
 	}
 
-	return resp.Body, nil
+	if err = json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return response, err
+	}
+
+	return response, nil
 }

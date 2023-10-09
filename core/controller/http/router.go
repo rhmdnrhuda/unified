@@ -48,7 +48,7 @@ func NewRouter(handler *gin.Engine, l logger.Interface, pg *postgres.Postgres, c
 		NewTalentRoutes(h, usecase.NewTalentUseCase(postgre.NewTalentRepository(pg), l), l, cfg)
 
 		NewMessageRoutes(h, usecase.NewMessageUseCase(outbound.NewVertexOutbound(cfg), outbound.NewAdaOutbound(cfg),
-			cache.NewCacheCommon(), postgre.NewUserRepository(pg), l), l)
+			cache.NewCacheCommon(), postgre.NewUserRepository(pg), postgre.NewTalentRepository(pg), l), l)
 	}
 
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/rhmdnrhuda/unified/core/entity"
+	"strings"
 	"time"
 
 	"github.com/rhmdnrhuda/unified/pkg/postgres"
@@ -70,17 +71,33 @@ func (t *TalentRepository) Update(ctx context.Context, data *entity.Talent) erro
 	return nil
 }
 
-func (t *TalentRepository) FindTalentByUniversityAndMajor(ctx context.Context, university, major string) (entity.Talent, error) {
+func (t *TalentRepository) FindTalentByUniversityAndMajor(ctx context.Context, universities, majors []string) (entity.Talent, error) {
 	talent := entity.Talent{}
+
+	// Create placeholders for the universities and majors using the `ANY` operator.
+	// This allows us to use the `IN` clause with arrays.
+	uniPlaceholders := make([]string, len(universities))
+	majorPlaceholders := make([]string, len(majors))
+	args := make([]interface{}, 0, len(universities)+len(majors))
+
+	for i, u := range universities {
+		uniPlaceholders[i] = fmt.Sprintf("$%d", len(args)+1)
+		args = append(args, u)
+	}
+
+	for i, m := range majors {
+		majorPlaceholders[i] = fmt.Sprintf("$%d", len(args)+1)
+		args = append(args, m)
+	}
 
 	sql := fmt.Sprintf(`
 		SELECT *
 		FROM %s
-		WHERE university like $1 AND major like $1
+		WHERE university = ANY(ARRAY[%s]) OR major = ANY(ARRAY[%s])
 		LIMIT 1;
-	`, talentRepositoryName)
+	`, talentRepositoryName, strings.Join(uniPlaceholders, ","), strings.Join(majorPlaceholders, ","))
 
-	row, err := t.Pool.Query(ctx, sql, university, major)
+	row, err := t.Pool.Query(ctx, sql, args...)
 	if err != nil {
 		return talent, fmt.Errorf("TalentRepository - FindTalentByUniversityAndMajor - t.Query: %w", err)
 	}

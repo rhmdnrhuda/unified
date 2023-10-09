@@ -14,14 +14,14 @@ type (
 	// Talent
 	Talent interface {
 		Create(ctx context.Context, req entity.TalentRequest) error
-		GetTalent(ctx context.Context, university, major string) (entity.Talent, error)
+		GetTalent(ctx context.Context, university, major []string) (entity.Talent, error)
 		Update(ctx context.Context, req entity.TalentRequest) error
 	}
 
 	TalentRepository interface {
 		Create(ctx context.Context, data *entity.Talent) error
 		Update(ctx context.Context, data *entity.Talent) error
-		FindTalentByUniversityAndMajor(ctx context.Context, university, major string) (entity.Talent, error)
+		FindTalentByUniversityAndMajor(ctx context.Context, universities, majors []string) (entity.Talent, error)
 	}
 
 	// Vertex
@@ -32,7 +32,7 @@ type (
 
 	AdaOutBound interface {
 		SendMessage(ctx context.Context, request entity.AdaRequest) error
-		SendButton(ctx context.Context, req entity.AdaButtonRequest) error
+		SendMessageButton(ctx context.Context, req entity.AdaButtonRequest) (string, error)
 	}
 
 	// Message

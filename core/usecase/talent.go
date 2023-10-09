@@ -29,7 +29,7 @@ func (t *TalentUseCase) Create(ctx context.Context, req entity.TalentRequest) er
 	})
 }
 
-func (t *TalentUseCase) GetTalent(ctx context.Context, university, major string) (entity.Talent, error) {
+func (t *TalentUseCase) GetTalent(ctx context.Context, university, major []string) (entity.Talent, error) {
 	return t.talentRepo.FindTalentByUniversityAndMajor(ctx, university, major)
 }
 

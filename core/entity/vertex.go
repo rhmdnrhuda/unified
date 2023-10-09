@@ -20,6 +20,15 @@ type BisonTextResponse struct {
 	Metadata    interface{}  `json:"metadata"`
 }
 
+type UniBuddyResponse struct {
+	Message    string   `json:"message"`
+	Type       *string  `json:"type"`
+	LinkURL    *string  `json:"link_url"`
+	University []string `json:"university"`
+	Major      []string `json:"major"`
+	IsFinished bool     `json:"is_finished"`
+}
+
 type Prediction struct {
 	Candidates []Message `json:"candidates,omitempty"`
 	Content    string    `json:"content,omitempty"`
