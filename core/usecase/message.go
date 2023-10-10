@@ -29,16 +29,19 @@ type MessageUseCase struct {
 	cache      Cache
 	userRepo   UserRepository
 	talentRepo TalentRepository
+	alertRepo  AlertRepository
 	log        logger.Interface
 }
 
-func NewMessageUseCase(vertex VertexOutBound, ada AdaOutBound, cache Cache, userRepo UserRepository, talent TalentRepository, log logger.Interface) *MessageUseCase {
+func NewMessageUseCase(vertex VertexOutBound, ada AdaOutBound, cache Cache, userRepo UserRepository,
+	talent TalentRepository, alert AlertRepository, log logger.Interface) *MessageUseCase {
 	return &MessageUseCase{
 		vertex:     vertex,
 		ada:        ada,
 		cache:      cache,
 		userRepo:   userRepo,
 		talentRepo: talent,
+		alertRepo:  alert,
 		log:        log,
 	}
 }
@@ -544,6 +547,6 @@ func (m *MessageUseCase) PaymentCallback(ctx context.Context, phone string) {
 		Data:        entity.DataRequest{},
 	}, "Payment completed\nplease click link below to set your schedule\n"+SelectedTalent[phone].CalendarURL, "template")
 
-	msg.TemplateName = "book_schedule_2"
+	msg.TemplateName = "schedule"
 	m.ada.SendMessage(ctx, msg)
 }

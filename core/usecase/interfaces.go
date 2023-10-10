@@ -47,6 +47,11 @@ type (
 		FindUserByNumber(ctx context.Context, number string) (entity.User, error)
 	}
 
+	AlertRepository interface {
+		Create(ctx context.Context, data []entity.Alert) error
+		FindAlert(ctx context.Context, day int64) ([]entity.Alert, error)
+	}
+
 	Cache interface {
 		Set(key, token string, duration time.Duration)
 		Get(key string) string
