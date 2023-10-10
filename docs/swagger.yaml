@@ -89,6 +89,32 @@ paths:
       summary: Receive message
       tags:
       - Message Handler
+  /payment/callback:
+    get:
+      consumes:
+      - application/json
+      description: Receive new message in the system.
+      operationId: Callback
+      parameters:
+      - description: phone number
+        in: query
+        name: phone
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.BaseResponse'
+      summary: Receive Payment Callback
+      tags:
+      - Payment Callback Handler
   /talent/create:
     post:
       consumes:

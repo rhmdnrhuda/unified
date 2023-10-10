@@ -20,6 +20,7 @@ var (
 	UniversityPreferences = make(map[string][]string)
 	MajorPreferences      = make(map[string][]string)
 	ResetState            = false
+	SelectedTalent        = make(map[string]entity.Talent)
 )
 
 type MessageUseCase struct {
@@ -190,15 +191,28 @@ func (m *MessageUseCase) processUniAlert(ctx context.Context, req entity.Message
 }
 
 func (m *MessageUseCase) processUniConnect(ctx context.Context, req entity.MessageRequest) {
+	if len(UniversityPreferences[req.FromNo]) <= 0 && len(MajorPreferences[req.FromNo]) <= 0 {
+		reqMessage := common.PrepareMessage(req, fmt.Sprintf("[hardcoded] You need to set preferences first"), "")
+		m.ada.SendMessage(ctx, reqMessage)
+		m.askUniversityPreferences(ctx, req)
+		State[req.FromNo] = constant.UNI_CHECK
+	}
+
 	talent, err := m.talentRepo.FindTalentByUniversityAndMajor(ctx, UniversityPreferences[req.FromNo], MajorPreferences[req.FromNo])
 	if err != nil {
+		reqMessage := common.PrepareMessage(req, fmt.Sprintf("[hardcoded]Unortunately, we can't found perfect talent based on your preferences"), "")
+		m.ada.SendMessage(ctx, reqMessage)
+		delete(State, req.FromNo)
 		return
 	}
 
-	reqMessage := common.PrepareMessage(req, fmt.Sprintf("[hardcoded] You can discuss more about your preferences with: %v", talent), "")
+	SelectedTalent[req.FromNo] = talent
+
+	reqMessage := common.PrepareMessage(req, fmt.Sprintf("[hardcoded] You can discuss more about your preferences with: %s %s at  ", talent.Name, talent.University), "")
 	m.ada.SendMessage(ctx, reqMessage)
 
-	reqMessage = common.PrepareMessage(req, "[hardcoded] click link below to make a payment if you want to connect.\n {ini link}", "")
+	paymentURL := fmt.Sprintf("http://192.168.1.9:8100/payment?phone=%s&price=Rp.%2050.000", req.FromNo)
+	reqMessage = common.PrepareMessage(req, "[hardcoded] click link below to make a payment if you want to connect.\n "+paymentURL, "")
 	m.ada.SendMessage(ctx, reqMessage)
 
 	time.Sleep(5 * time.Second)
@@ -525,4 +539,16 @@ func (m *MessageUseCase) getAccessToken() string {
 	go m.cache.Set(constant.RedisAccessTokenKey, token, constant.RedisAccessTokenTTL)
 
 	return token
+}
+
+func (m *MessageUseCase) PaymentCallback(ctx context.Context, phone string) {
+	msg := common.PrepareMessage(entity.MessageRequest{
+		FromNo:      phone,
+		Platform:    "WA",
+		AccountNo:   "60136958751",
+		AccountName: "UNIFIED",
+		Data:        entity.DataRequest{},
+	}, "Payment completed\nplease click link below to set your schedule\n"+SelectedTalent[phone].CalendarURL, "")
+
+	m.ada.SendMessage(ctx, msg)
 }

@@ -38,6 +38,7 @@ type (
 	// Message
 	Message interface {
 		ProcessMessage(ctx context.Context, req entity.MessageRequest) (string, error)
+		PaymentCallback(ctx context.Context, phone string)
 	}
 
 	UserRepository interface {

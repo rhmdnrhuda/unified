@@ -25,6 +25,11 @@ func NewMessageRoutes(handler *gin.RouterGroup, uc usecase.Message, l logger.Int
 		h.POST("/webhook", r.receiveMessage)
 		h.POST("", r.receiveMessage)
 	}
+
+	newHandler := handler.Group("payment")
+	{
+		newHandler.GET("/callback", r.callback)
+	}
 }
 
 // @Summary Receive message
@@ -60,6 +65,28 @@ func (r *messageRoutes) receiveMessage(c *gin.Context) {
 	c.JSON(http.StatusOK, BaseResponse{
 		Code:       "200",
 		Data:       resp,
+		ServerTime: time.Now().Unix(),
+	})
+}
+
+// @Summary Receive Payment Callback
+// @Description Receive new message in the system.
+// @ID Callback
+// @Tags Payment Callback Handler
+// @Accept json
+// @Produce json
+// @Param phone query string true "phone number"
+// @Success     200 {object} BaseResponse
+// @Failure     500 {object} BaseResponse
+// @Router      /payment/callback [get]
+func (r *messageRoutes) callback(c *gin.Context) {
+	number := c.Query("phone")
+
+	r.uc.PaymentCallback(c.Request.Context(), number)
+
+	c.JSON(http.StatusOK, BaseResponse{
+		Code:       "200",
+		Data:       "Success",
 		ServerTime: time.Now().Unix(),
 	})
 }

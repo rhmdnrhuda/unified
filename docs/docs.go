@@ -56,6 +56,45 @@ const docTemplate = `{
                 }
             }
         },
+        "/payment/callback": {
+            "get": {
+                "description": "Receive new message in the system.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payment Callback Handler"
+                ],
+                "summary": "Receive Payment Callback",
+                "operationId": "Callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "phone number",
+                        "name": "phone",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.BaseResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/talent/create": {
             "post": {
                 "description": "Creates a new talent in the system.",
