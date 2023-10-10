@@ -51,7 +51,11 @@ func (m *MessageUseCase) ProcessMessage(ctx context.Context, req entity.MessageR
 	reqMessage := common.PrepareMessage(req, "", "text")
 
 	if val, ok := State[req.FromNo]; !ok {
-		if strings.EqualFold(req.Data.Text, "hi") || strings.EqualFold(req.Data.Text, "hello") {
+		if common.IsIgnore(req.Data.Text) {
+			return "", nil
+		}
+
+		if common.IsReset(req.Data.Text) {
 			m.entryPoint(ctx, req)
 			return "", nil
 		}
@@ -76,15 +80,9 @@ func (m *MessageUseCase) ProcessMessage(ctx context.Context, req entity.MessageR
 			return "", err
 		} else if strings.EqualFold(userTempData.Feature, constant.FEATURE_UNI_CONNECT) {
 			m.processUniConnect(ctx, req)
-			State[req.FromNo] = constant.UNI_CONNECT
 			return "", err
 		} else {
-			reqMessage.Text = fmt.Sprintf("Hello %s! 👋 I'm Unified, your trusty student personal assistant. My mission is to make your journey to choosing a bachelor's university and major as smooth as possible.", req.Data.CustName)
-			err := m.ada.SendMessage(ctx, reqMessage)
-			reqMessage.Text = "Feel free to ask me anything, from university recommendations to major insights—I'm here to help you every step of the way! 😊🎓"
-			err = m.ada.SendMessage(ctx, reqMessage)
-			m.askUniversityPreferences(ctx, req)
-			State[req.FromNo] = constant.UNI_CHECK
+			m.entryPoint(ctx, req)
 			return "", err
 		}
 	} else {
@@ -123,13 +121,14 @@ func (m *MessageUseCase) processUniCheck(ctx context.Context, req entity.Message
 	if _, valid := UniversityPreferences[req.FromNo]; !valid {
 		up := m.getUniversityFromMessage(ctx, req.Data.Text)
 		if len(up) <= 0 {
-			msg := common.PrepareMessage(req, "[hardcoded]Ok, no problem! We'll help you figure out what you're looking for 🥂. But before we get started, please help me answer one more question", "")
+			msg := common.PrepareMessage(req, "Ok, no problem! We'll help you figure out what you're looking for 🥂. But before we get started, please answer one more question.", "")
 			m.ada.SendMessage(ctx, msg)
 		}
 
+		time.Sleep(1 * time.Second)
 		UniversityPreferences[req.FromNo] = up
 
-		msg := common.PrepareMessage(req, "[hardcoded]Do you have a *major* in mind that you're interested in?", "")
+		msg := common.PrepareMessage(req, "What's the major you're interested in pursuing?", "")
 		m.ada.SendMessage(ctx, msg)
 		return
 	}
@@ -144,7 +143,7 @@ func (m *MessageUseCase) processUniCheck(ctx context.Context, req entity.Message
 func (m *MessageUseCase) processUniAlert(ctx context.Context, req entity.MessageRequest, uniPreferences []string) {
 	if len(uniPreferences) <= 0 {
 		if State[req.FromNo] == constant.UNI_ALERT {
-			reqMessage := common.PrepareMessage(req, "[hardcoded]Your input is not valid", "")
+			reqMessage := common.PrepareMessage(req, "University name is not valid", "")
 
 			err := m.ada.SendMessage(ctx, reqMessage)
 			if err != nil {
@@ -164,45 +163,52 @@ func (m *MessageUseCase) processUniAlert(ctx context.Context, req entity.Message
 		uniPreferences = universityPreferences
 	}
 
-	message := fmt.Sprintf("Sure thing! We've already set up reminders to keep you in the loop about important events related to your registration timeline at %s", strings.Join(uniPreferences, "\n"))
-
+	message := fmt.Sprintf("Sure thing! We've already set up reminders to keep you in the loop about important events related to your registration timeline at %s 📅 ", strings.Join(uniPreferences, "\n"))
 	reqMessage := common.PrepareMessage(req, message, "")
-
 	err := m.ada.SendMessage(ctx, reqMessage)
 	if err != nil {
 		m.log.Error("askUniversityPreferences Failed Send Message, err: %v", err)
 	}
+
+	time.Sleep(500 * time.Millisecond)
+	sticker := common.PrepareStickerMessage(req, "119bba90-da64-469c-92a2-7ccc76046618")
+	m.ada.SendMessage(ctx, sticker)
 }
 
 func (m *MessageUseCase) processUniConnect(ctx context.Context, req entity.MessageRequest) {
 	if len(UniversityPreferences[req.FromNo]) <= 0 && len(MajorPreferences[req.FromNo]) <= 0 {
-		reqMessage := common.PrepareMessage(req, fmt.Sprintf("[hardcoded] You need to set preferences first"), "")
-		m.ada.SendMessage(ctx, reqMessage)
+		//reqMessage := common.PrepareMessage(req, fmt.Sprintf("You need to set preferences first"), "")
+		//m.ada.SendMessage(ctx, reqMessage)
 		m.askUniversityPreferences(ctx, req)
 		State[req.FromNo] = constant.UNI_CHECK
+		return
 	}
 
 	talent, err := m.talentRepo.FindTalentByUniversityAndMajor(ctx, UniversityPreferences[req.FromNo], MajorPreferences[req.FromNo])
 	if err != nil {
-		reqMessage := common.PrepareMessage(req, fmt.Sprintf("[hardcoded]Unortunately, we can't found perfect talent based on your preferences"), "")
+		reqMessage := common.PrepareMessage(req, fmt.Sprintf("Unfortunately, we couldn't find the perfect mentor based on your preferences."), "")
 		m.ada.SendMessage(ctx, reqMessage)
-		delete(State, req.FromNo)
+		time.Sleep(1 * time.Second)
+		m.endState(ctx, req)
 		return
 	}
 
 	SelectedTalent[req.FromNo] = talent
 
-	reqMessage := common.PrepareMessage(req, fmt.Sprintf("[hardcoded] You can discuss more about your preferences with: %s from %s with major %s as %s", talent.Name, talent.University, talent.Major, talent.Status), "")
+	reqMessage := common.PrepareMessage(req, fmt.Sprintf("We can connect you to %s as a %s %s from %s 🏫. Are you interested to have a 45-minutes session to discuss more about your university or major preference with %s? ☎️",
+		talent.Name, talent.Major, talent.Status, talent.University, talent.Name), "")
 	m.ada.SendMessage(ctx, reqMessage)
 
+	time.Sleep(1 * time.Second)
+
 	paymentURL := fmt.Sprintf("https://unified-payment.vercel.app/payment?phone=%s&price=Rp.50.000", req.FromNo)
-	reqMessage = common.PrepareMessage(req, "[hardcoded] click link below to make a payment if you want to connect.\n "+paymentURL, "")
+	reqMessage = common.PrepareMessage(req, "Please continue to payment using the link below if you are interested to have a session 👥\n\n "+paymentURL, "")
 	m.ada.SendMessage(ctx, reqMessage)
-	delete(State, req.FromNo)
+	deleteAllCache(req.FromNo)
 }
 
 func (m *MessageUseCase) askUniversityPreferences(ctx context.Context, req entity.MessageRequest) error {
-	reqMessage := common.PrepareMessage(req, "[hardcoded] Do you have a university in mind that you're interested in?", "")
+	reqMessage := common.PrepareMessage(req, "Which university are you dreaming of going to? 😊", "")
 	err := m.ada.SendMessage(ctx, reqMessage)
 	if err != nil {
 		m.log.Error("askUniversityPreferences Failed Send Message, err: %v", err)
@@ -224,7 +230,10 @@ func (m *MessageUseCase) getUniversityFromMessage(ctx context.Context, message s
 		return []string{}
 	}
 
-	return strings.Split(strings.TrimSpace(response.Predictions[0].Content), ",")
+	ctn := strings.ReplaceAll(response.Predictions[0].Content, "\n", "")
+	ctn = strings.ReplaceAll(ctn, "`", "")
+	ctn = strings.ReplaceAll(ctn, "pascal", "")
+	return strings.Split(strings.TrimSpace(ctn), ",")
 }
 
 func (m *MessageUseCase) getMajorFromMessage(ctx context.Context, message string) []string {
@@ -244,7 +253,7 @@ func (m *MessageUseCase) getMajorFromMessage(ctx context.Context, message string
 }
 
 func (m *MessageUseCase) classifyMessage(ctx context.Context, message string) (*entity.UserTemporaryData, error) {
-	request := provideBisonTextRequest(fmt.Sprintf(constant.TemplatePromptBisonChat, message))
+	request := provideBisonTextRequest(fmt.Sprintf(constant.TemplatePromptClassify, message))
 	response, err := m.vertex.DoCallVertexAPIText(ctx, request, m.getAccessToken())
 	if err != nil {
 		m.log.Error("failed call DoCallVertexAPIText, request: %v\nerror: %v", request, err)
@@ -273,17 +282,17 @@ func (m *MessageUseCase) processUniBuddy(ctx context.Context, req entity.Message
 			Content: req.Data.Text,
 		})
 	} else {
-		content := "start"
+		content := "Give descriptive information of top 5 universities in the world and top 5 majors in the world. Also ask user whether they have any question regarding the recommendation or user wants to be guided with some questions to help on picking the best university or major for them. in one message"
 		_, ok := State[req.FromNo]
 		if !ok {
 			content = req.Data.Text
 		} else {
 			if len(MajorPreferences[req.FromNo]) > 0 && len(UniversityPreferences[req.FromNo]) > 0 {
-				content = fmt.Sprintf("Hi Unified, I'm interested to study %s in %s Can you tell me more about it?", strings.Join(MajorPreferences[req.FromNo], ", "), strings.Join(MajorPreferences[req.FromNo], ", "))
+				content = fmt.Sprintf("Give information about %s and %s in long informal description. Also ask user whether they have any question regarding the recommendation or wants to know about other universities or major.", strings.Join(MajorPreferences[req.FromNo], ", "), strings.Join(UniversityPreferences[req.FromNo], ", "))
 			} else if len(MajorPreferences[req.FromNo]) > 0 {
-				content = fmt.Sprintf("Hi Unified, I'm interested to study %s major. Can you tell me more about it? Or give me University recommendation from that major", strings.Join(MajorPreferences[req.FromNo], ", "))
-			} else {
-				content = fmt.Sprintf("Hi Unified, I'm interested to study in %s. Can you tell me more about it? Or give me Major recommendation from that university", strings.Join(UniversityPreferences[req.FromNo], ", "))
+				content = fmt.Sprintf("Give descriptive information of top 5 universities in the world for %s major and describe %s in long informal description. Also ask user whether they have any question regarding the recommendation or user wants to be guided with some questions to help on picking the best university for them in one message", strings.Join(MajorPreferences[req.FromNo], ", "), strings.Join(MajorPreferences[req.FromNo], ", "))
+			} else if len(UniversityPreferences[req.FromNo]) > 0 {
+				content = fmt.Sprintf("Give descriptive information of top 5 major in the %s for and describe %s in long informal description. Also ask user whether they have any question regarding the recommendation or user wants to be guided with some questions to help on picking the best university for them in one message", strings.Join(UniversityPreferences[req.FromNo], ", "), strings.Join(UniversityPreferences[req.FromNo], ", "))
 			}
 		}
 
@@ -309,9 +318,14 @@ func (m *MessageUseCase) processUniBuddy(ctx context.Context, req entity.Message
 	messages = append(messages, newMessage)
 	UniBuddy[req.FromNo] = messages
 
+	if len(messages) > 10 {
+		//
+	}
 	response := entity.UniBuddyResponse{}
 	message := res.Predictions[0].Candidates[0].Content
-	err = json.Unmarshal([]byte(res.Predictions[0].Candidates[0].Content), &response)
+	content := strings.ReplaceAll(res.Predictions[0].Candidates[0].Content, "\t", " ")
+	content = strings.ReplaceAll(message, "\n", "\\n")
+	err = json.Unmarshal([]byte(content), &response)
 	if err != nil {
 		msg := common.PrepareMessage(req, message, "")
 		m.ada.SendMessage(ctx, msg)
@@ -325,7 +339,8 @@ func (m *MessageUseCase) processUniBuddy(ctx context.Context, req entity.Message
 	m.ada.SendMessage(ctx, msg)
 
 	if response.IsFinished {
-		go m.nextStepUniBuddy(context.Background(), req)
+		time.Sleep(500 * time.Millisecond)
+		m.nextStepUniBuddy(context.Background(), req)
 		return
 	}
 
@@ -368,11 +383,15 @@ func (m *MessageUseCase) nextStepUniBuddy(ctx context.Context, req entity.Messag
 		message := fmt.Sprintf("Would you like to reach out to folks from your dream university or major? 🎓")
 		msg := common.PrepareMessageButton(req, message, "", "", constant.ButtonYesOrNo)
 		m.ada.SendMessageButton(ctx, msg)
+
+		time.Sleep(500 * time.Millisecond)
+		sticker := common.PrepareStickerMessage(req, "5a35c3fb-d54c-4e53-b4be-81961ab9137a")
+		m.ada.SendMessage(ctx, sticker)
 		State[req.FromNo] = constant.UNI_BUDDY_TO_UNI_CONNECT
 		return
 	}
 
-	message := fmt.Sprintf("[hardcoded]Do you want to get notification from %s", strings.Join(UniversityPreferences[req.FromNo], ", "))
+	message := fmt.Sprintf("Do you want UNIFIED to send you alert regarding %s important event dates? ☎️", strings.Join(UniversityPreferences[req.FromNo], ", "))
 	msg := common.PrepareMessageButton(req, message, "", "", constant.ButtonYesOrNo)
 	m.ada.SendMessageButton(ctx, msg)
 
@@ -388,18 +407,21 @@ func (m *MessageUseCase) nextStateFromUniCheck(ctx context.Context, req entity.M
 		State[req.FromNo] = constant.UNI_BUDDY
 		return
 	} else if len(UniversityPreferences[req.FromNo]) > 0 {
-		message = fmt.Sprintf("Great to know that you are interested in studying at %s! How can UNIFIED assist you with your plans? 🚀", strings.Join(UniversityPreferences[req.FromNo], ", "))
+		message = fmt.Sprintf("It's fantastic that you're interested in pursuing your studies at %s! How can UNIFIED assist you with your plan? 🚀\n1. 🎓Uni-Buddy:  Ask us a question, and we will provide personalized information about studying for you\n2. 👥 Uni-Connect: Get in touch with someone from your dream university or major!\n3. ☎️ Uni-Alert: Let's set up alerts for you regarding important university timelines.", strings.Join(UniversityPreferences[req.FromNo], ", "))
 		if len(MajorPreferences[req.FromNo]) > 0 {
-			message = fmt.Sprintf("It's fantastic that you're interested in pursuing a %s at %s! How can UNIFIED assist you with your plans? 🚀", strings.Join(MajorPreferences[req.FromNo], ", "), strings.Join(UniversityPreferences[req.FromNo], ", "))
+			message = fmt.Sprintf("It's fantastic that you're interested in pursuing a %s at %s! How can UNIFIED assist you with your plans? 🚀\n1. 🎓Uni-Buddy:  Ask us a question, and we will provide personalized information about studying for you\n2. 👥 Uni-Connect: Get in touch with someone from your dream university or major!\n3. ☎️ Uni-Alert: Let's set up alerts for you regarding important university timelines.", strings.Join(MajorPreferences[req.FromNo], ", "), strings.Join(UniversityPreferences[req.FromNo], ", "))
 		}
 		btn = constant.ButtonAllFeature
 	} else if len(MajorPreferences[req.FromNo]) > 0 {
-		message = fmt.Sprintf("Great to know that you are interested in studying %s! How can UNIFIED assist you with your plans? 🚀", strings.Join(MajorPreferences[req.FromNo], ", "))
+		message = fmt.Sprintf("It's great to hear that you're interested in pursuing %s! How can UNIFIED assist you with your plan? 🚀\n1. 🎓Uni-Buddy:  Ask us a question, and we will provide personalized information about studying for you\n2. 👥 Uni-Connect: Get in touch with someone from your dream university or major!", strings.Join(MajorPreferences[req.FromNo], ", "))
 		btn = constant.ButtonUniBuddyUniConnect
 	}
 
 	msg := common.PrepareMessageButton(req, message, "", "", btn)
 	m.ada.SendMessageButton(ctx, msg)
+	time.Sleep(500 * time.Millisecond)
+	sticker := common.PrepareStickerMessage(req, "8e2d7746-2585-4a37-a0c5-e0d54841ceb4")
+	m.ada.SendMessage(ctx, sticker)
 }
 
 func (m *MessageUseCase) getUserPreferences(ctx context.Context, user entity.DataRequest) ([]string, []string) {
@@ -420,11 +442,11 @@ func (m *MessageUseCase) getUserPreferences(ctx context.Context, user entity.Dat
 func initBisonChatUniBuddyRequest(uniPreferences, majorPreferences []string) entity.BisonChatRequest {
 	context := constant.ContextUniBuddyUniNoMajorNo
 	if len(uniPreferences) > 0 && len(majorPreferences) > 0 {
-		context = fmt.Sprintf(constant.ContextUniBuddyUniYesMajorYes, strings.Join(uniPreferences, ", "), strings.Join(majorPreferences, ", "), strings.Join(uniPreferences, ", "), strings.Join(majorPreferences, ", "))
+		context = fmt.Sprintf(constant.ContextUniBuddyUniYesMajorYes)
 	} else if len(uniPreferences) > 0 {
-		context = fmt.Sprintf(constant.ContextUniBuddyUniYesMajorNo, strings.Join(uniPreferences, ", "), strings.Join(uniPreferences, ", "), strings.Join(uniPreferences, ", "), strings.Join(uniPreferences, ", "))
+		context = fmt.Sprintf(constant.ContextUniBuddyUniYesMajorNo)
 	} else if len(majorPreferences) > 0 {
-		context = fmt.Sprintf(constant.ContextUniBuddyUniNoMajorYes, strings.Join(majorPreferences, ", "), strings.Join(majorPreferences, ", "), strings.Join(majorPreferences, ", "), strings.Join(majorPreferences, ", "))
+		context = fmt.Sprintf(constant.ContextUniBuddyUniNoMajorYes)
 	}
 
 	return entity.BisonChatRequest{
@@ -454,31 +476,27 @@ func (m *MessageUseCase) handleInteractiveMessage(ctx context.Context, req entit
 		return
 	} else if req.Data.Text == constant.ButtonUniConnect {
 		m.processUniConnect(ctx, req)
-		State[req.FromNo] = constant.UNI_CONNECT
 		return
 	}
 
 	if State[req.FromNo] == constant.UNI_BUDDY_TO_UNI_ALERT {
 		if strings.EqualFold(req.Data.Text, "yes") {
 			m.processUniAlert(ctx, req, UniversityPreferences[req.FromNo])
-
-			reqMessage := common.PrepareMessage(req, "[hardcoded] Anything else?", "")
-			m.ada.SendMessage(ctx, reqMessage)
-		} else {
-			//	todo: tawarin uni connect
 		}
+
+		m.endState(ctx, req)
 	} else if State[req.FromNo] == constant.UNI_BUDDY_TO_UNI_CONNECT {
 		if strings.EqualFold(req.Data.Text, "yes") {
 			m.processUniConnect(ctx, req)
-			State[req.FromNo] = constant.UNI_CONNECT
 		} else {
-			//	todo: tawarin uni connect
+			m.endState(ctx, req)
 		}
+
 	} else if ResetState {
 		if strings.EqualFold(req.Data.Text, "yes") {
 			reqMessage := common.PrepareMessage(req, "Okay..  How can I assist you today? 😊", "")
 			m.ada.SendMessage(ctx, reqMessage)
-			delete(State, req.FromNo)
+			deleteAllCache(req.FromNo)
 		} else {
 
 		}
@@ -493,7 +511,7 @@ func provideBisonTextRequest(prompt string) entity.BisonTextRequest {
 			},
 		},
 		Parameters: entity.Parameter{
-			Temperature:     0.3,
+			Temperature:     0.2,
 			MaxOutputTokens: 200,
 			TopP:            0.8,
 			TopK:            40,
@@ -531,22 +549,50 @@ func (m *MessageUseCase) entryPoint(ctx context.Context, req entity.MessageReque
 	time.Sleep(1 * time.Second)
 	reqMessage.Text = "Feel free to ask me anything, from university recommendations to major insights—I'm here to help you every step of the way! 😊🎓"
 	m.ada.SendMessage(ctx, reqMessage)
+
+	time.Sleep(500 * time.Millisecond)
+	sticker := common.PrepareStickerMessage(req, "2cc41558-02c7-406c-8704-b569ee775a88")
+	m.ada.SendMessage(ctx, sticker)
+
 	time.Sleep(1 * time.Second)
 	m.askUniversityPreferences(ctx, req)
-	delete(UniversityPreferences, req.FromNo)
-	delete(MajorPreferences, req.FromNo)
+	deleteAllCache(req.FromNo)
 	State[req.FromNo] = constant.UNI_CHECK
 }
 
+func deleteAllCache(no string) {
+	delete(UniversityPreferences, no)
+	delete(MajorPreferences, no)
+	delete(UniBuddy, no)
+	delete(State, no)
+}
+
+func (m *MessageUseCase) endState(ctx context.Context, req entity.MessageRequest) {
+	reqMessage := common.PrepareMessage(req, "If you need any assistance, please don't hesitate to contact us. Simply greet me to start chatting with me again. Have a wonderful day!", "")
+	m.ada.SendMessage(ctx, reqMessage)
+	deleteAllCache(req.FromNo)
+}
+
 func (m *MessageUseCase) PaymentCallback(ctx context.Context, phone string) {
-	msg := common.PrepareMessage(entity.MessageRequest{
+	req := entity.MessageRequest{
 		FromNo:      phone,
 		Platform:    "WA",
 		AccountNo:   "60136958751",
 		AccountName: "UNIFIED",
 		Data:        entity.DataRequest{},
-	}, "Payment completed\nplease click link below to set your schedule\n"+SelectedTalent[phone].CalendarURL, "template")
+	}
 
-	msg.TemplateName = "schedule"
+	msg := common.PrepareMessage(req, "Payment completed\nplease click link below to set your schedule\n"+SelectedTalent[phone].CalendarURL, "template")
+
+	msg.TemplateName = "set_schedulue"
+	m.ada.SendMessage(ctx, msg)
+
+	time.Sleep(500 * time.Millisecond)
+
+	sticker := common.PrepareStickerMessage(req, "67477312-edec-4ec1-8940-38678f2dea57")
+	m.ada.SendMessage(ctx, sticker)
+	time.Sleep(1 * time.Second)
+
+	msg = common.PrepareMessage(req, "Have a fantastic day! 🎉 If you ever need assistance in the future, don't hesitate to reach out. Take care!", "")
 	m.ada.SendMessage(ctx, msg)
 }

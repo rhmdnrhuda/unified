@@ -81,21 +81,54 @@ func (t *TalentRepository) FindTalentByUniversityAndMajor(ctx context.Context, u
 	args := make([]interface{}, 0, len(universities)+len(majors))
 
 	for i, u := range universities {
+		// Check if the university is empty. If it is, skip it.
+		if u == "" {
+			continue
+		}
+
 		uniPlaceholders[i] = fmt.Sprintf("$%d", len(args)+1)
 		args = append(args, u)
 	}
 
 	for i, m := range majors {
+		// Check if the major is empty. If it is, skip it.
+		if m == "" {
+			continue
+		}
+
 		majorPlaceholders[i] = fmt.Sprintf("$%d", len(args)+1)
 		args = append(args, m)
 	}
 
 	sql := fmt.Sprintf(`
-		SELECT *
-		FROM %s
-		WHERE university = ANY(ARRAY[%s]) OR major = ANY(ARRAY[%s])
-		LIMIT 1;
-	`, talentRepositoryName, strings.Join(uniPlaceholders, ","), strings.Join(majorPlaceholders, ","))
+       SELECT *
+       FROM %s
+       WHERE university = ANY(ARRAY[%s]) OR major = ANY(ARRAY[%s])
+       LIMIT 1;
+    `, talentRepositoryName, strings.Join(uniPlaceholders, ","), strings.Join(majorPlaceholders, ","))
+
+	// If there are no universities or majors, return an empty talent.
+	if len(uniPlaceholders) == 0 && len(majorPlaceholders) == 0 {
+		sql = fmt.Sprintf(`
+       SELECT *
+       FROM %s
+       LIMIT 1;
+    `, talentRepositoryName)
+	} else if len(uniPlaceholders) == 0 {
+		sql = fmt.Sprintf(`
+       SELECT *
+       FROM %s
+       WHERE major = ANY(ARRAY[%s])
+       LIMIT 1;
+    `, talentRepositoryName, strings.Join(majorPlaceholders, ","))
+	} else if len(majorPlaceholders) == 0 {
+		sql = fmt.Sprintf(`
+       SELECT *
+       FROM %s
+       WHERE university = ANY(ARRAY[%s])
+       LIMIT 1;
+    `, talentRepositoryName, strings.Join(uniPlaceholders, ","))
+	}
 
 	row, err := t.Pool.Query(ctx, sql, args...)
 	if err != nil {

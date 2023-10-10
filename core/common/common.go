@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -26,6 +27,16 @@ func PrepareMessage(req entity.MessageRequest, message, messageType string) enti
 	}
 }
 
+func PrepareStickerMessage(req entity.MessageRequest, message string) entity.AdaRequest {
+	return entity.AdaRequest{
+		Platform:  req.Platform,
+		From:      req.AccountNo,
+		To:        req.FromNo,
+		Type:      "sticker",
+		StickerID: message,
+	}
+}
+
 func PrepareMessageButton(req entity.MessageRequest, message, header, footer string, buttons []string) entity.AdaButtonRequest {
 	return entity.AdaButtonRequest{
 		Platform:   req.Platform,
@@ -37,6 +48,26 @@ func PrepareMessageButton(req entity.MessageRequest, message, header, footer str
 		Footer:     footer,
 		Buttons:    buttons,
 	}
+}
+
+func IsIgnore(str string) bool {
+	listIgnore := []string{"ok", "okay", "kk", "oke", "okey", "hmm", "hm", "hmmmm", "wkwk", "wkwkwk", "thanks", "thank you", "terima kasih"}
+	for _, val := range listIgnore {
+		if strings.EqualFold(val, str) || strings.Contains(val, str) {
+			return true
+		}
+	}
+	return false
+}
+
+func IsReset(str string) bool {
+	listResetMsg := []string{"unified", "hi", "hello", "halo", "helo", "hai", "hey", "Hi Unified", "Hello unified", "Hey"}
+	for _, val := range listResetMsg {
+		if strings.EqualFold(val, str) {
+			return true
+		}
+	}
+	return false
 }
 
 func ToString(data interface{}) string {

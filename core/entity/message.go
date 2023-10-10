@@ -24,9 +24,10 @@ type AdaRequest struct {
 	To           string   `json:"to"`
 	Type         string   `json:"type"`
 	Text         string   `json:"text"`
-	TemplateName string   `json:"templateName"`
-	TemplateLang string   `json:"templateLang"`
-	TemplateData []string `json:"templateData"`
+	TemplateName string   `json:"templateName,omitempty"`
+	TemplateLang string   `json:"templateLang,omitempty"`
+	TemplateData []string `json:"templateData,omitempty"`
+	StickerID    string   `json:"stickerId"`
 }
 
 type AdaButtonRequest struct {
