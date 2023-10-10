@@ -19,11 +19,14 @@ type DataRequest struct {
 }
 
 type AdaRequest struct {
-	Platform string `json:"platform"`
-	From     string `json:"from"`
-	To       string `json:"to"`
-	Type     string `json:"type"`
-	Text     string `json:"text"`
+	Platform     string   `json:"platform"`
+	From         string   `json:"from"`
+	To           string   `json:"to"`
+	Type         string   `json:"type"`
+	Text         string   `json:"text"`
+	TemplateName string   `json:"templateName"`
+	TemplateLang string   `json:"templateLang"`
+	TemplateData []string `json:"templateData"`
 }
 
 type AdaButtonRequest struct {

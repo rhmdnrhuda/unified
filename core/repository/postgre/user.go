@@ -47,7 +47,18 @@ func (t *UserRepository) Create(ctx context.Context, data *entity.User) error {
 
 func (t *UserRepository) Update(ctx context.Context, data *entity.User) error {
 	now := time.Now().Unix()
+	// Insert the new user data.
 	sql, args, err := t.Builder.
+		Insert(userRepositoryName).
+		Columns("number", "university_preferences", "major_preferences", "updated_at").
+		Values(data.Number, data.UniversityPreferences, data.MajorPreferences, now).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("UserRepository - Update - t.Builder: %w", err)
+	}
+
+	// Update the existing user data.
+	updateSql, updateArgs, err := t.Builder.
 		Update(userRepositoryName).
 		Set("university_preferences", data.UniversityPreferences).
 		Set("major_preferences", data.MajorPreferences).
@@ -58,9 +69,13 @@ func (t *UserRepository) Update(ctx context.Context, data *entity.User) error {
 		return fmt.Errorf("UserRepository - Update - t.Builder: %w", err)
 	}
 
+	// Execute the upsert statements.
 	_, err = t.Pool.Exec(ctx, sql, args...)
 	if err != nil {
-		return fmt.Errorf("UserRepository - Update - t.Pool.Exec: %w", err)
+		_, err = t.Pool.Exec(ctx, updateSql, updateArgs...)
+		if err != nil {
+			return fmt.Errorf("UserRepository - Update - t.Pool.Exec: %w", err)
+		}
 	}
 
 	return nil

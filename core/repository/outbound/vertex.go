@@ -27,6 +27,7 @@ func NewVertexOutbound(cfg *config.Config) *VertexOutbound {
 }
 
 func (v *VertexOutbound) DoCallVertexAPIChat(ctx context.Context, request entity.BisonChatRequest, token string) (*entity.BisonChatResponse, error) {
+	ctx = context.Background()
 	jsonRequest, err := json.Marshal(request)
 	if err != nil {
 		return nil, err
@@ -34,7 +35,7 @@ func (v *VertexOutbound) DoCallVertexAPIChat(ctx context.Context, request entity
 
 	fmt.Println(string(jsonRequest))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, v.cfg.VertexURL+v.cfg.ChatModel, bytes.NewReader(jsonRequest))
+	req, err := http.NewRequest(http.MethodPost, v.cfg.VertexURL+v.cfg.ChatModel, bytes.NewReader(jsonRequest))
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +72,7 @@ func (v *VertexOutbound) DoCallVertexAPIText(ctx context.Context, request entity
 
 	fmt.Println(string(jsonRequest))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, v.cfg.VertexURL+v.cfg.TextModel, bytes.NewReader(jsonRequest))
+	req, err := http.NewRequest(http.MethodPost, v.cfg.VertexURL+v.cfg.TextModel, bytes.NewReader(jsonRequest))
 	if err != nil {
 		return nil, err
 	}

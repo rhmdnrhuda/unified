@@ -15,12 +15,14 @@ func PrepareMessage(req entity.MessageRequest, message, messageType string) enti
 	if messageType == "" {
 		messageType = "text"
 	}
+
 	return entity.AdaRequest{
-		Platform: req.Platform,
-		From:     req.AccountNo,
-		To:       req.FromNo,
-		Type:     messageType,
-		Text:     message,
+		Platform:     req.Platform,
+		From:         req.AccountNo,
+		To:           req.FromNo,
+		Type:         messageType,
+		Text:         message,
+		TemplateLang: "en",
 	}
 }
 
