@@ -15,6 +15,36 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/cron": {
+            "get": {
+                "description": "Run Cron Job For User Alert.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cron Alert Handler"
+                ],
+                "summary": "Cron Alert",
+                "operationId": "Cron Alert",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.BaseResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/message": {
             "post": {
                 "description": "Receive new message in the system.",

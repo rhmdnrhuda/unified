@@ -30,6 +30,12 @@ func NewMessageRoutes(handler *gin.RouterGroup, uc usecase.Message, l logger.Int
 	{
 		newHandler.GET("/callback", r.callback)
 	}
+
+	cronHandler := handler.Group("cron")
+	{
+		cronHandler.GET("", r.cron)
+	}
+
 }
 
 // @Summary Receive message
@@ -83,6 +89,26 @@ func (r *messageRoutes) callback(c *gin.Context) {
 	number := c.Query("phone")
 
 	r.uc.PaymentCallback(c.Request.Context(), number)
+
+	c.JSON(http.StatusOK, BaseResponse{
+		Code:       "200",
+		Data:       "Success",
+		ServerTime: time.Now().Unix(),
+	})
+}
+
+// @Summary Cron Alert
+// @Description Run Cron Job For User Alert.
+// @ID Cron Alert
+// @Tags Cron Alert Handler
+// @Accept json
+// @Produce json
+// @Success     200 {object} BaseResponse
+// @Failure     500 {object} BaseResponse
+// @Router      /cron [get]
+func (r *messageRoutes) cron(c *gin.Context) {
+
+	r.uc.RunCron(c.Request.Context())
 
 	c.JSON(http.StatusOK, BaseResponse{
 		Code:       "200",

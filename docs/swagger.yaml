@@ -62,6 +62,26 @@ info:
   title: Go Clean Template API
   version: "1.0"
 paths:
+  /cron:
+    get:
+      consumes:
+      - application/json
+      description: Run Cron Job For User Alert.
+      operationId: Cron Alert
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.BaseResponse'
+      summary: Cron Alert
+      tags:
+      - Cron Alert Handler
   /message:
     post:
       consumes:

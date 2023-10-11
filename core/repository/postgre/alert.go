@@ -3,9 +3,9 @@ package postgre
 import (
 	"context"
 	"fmt"
-	"github.com/Masterminds/squirrel"
 	"github.com/rhmdnrhuda/unified/core/entity"
 	"github.com/rhmdnrhuda/unified/pkg/postgres"
+	"strings"
 	"time"
 )
 
@@ -22,22 +22,14 @@ type AlertRepository struct {
 }
 
 func (t *AlertRepository) Create(ctx context.Context, data []entity.Alert) error {
-	values := []interface{}{}
+	var values []string
 	for _, alert := range data {
-		values = append(values, alert.UserID, alert.Date, alert.Message)
+		values = append(values, fmt.Sprintf("('%s', '%d', '%s', '%s')", alert.UserID, alert.Date, alert.Message, alert.University))
 	}
 
-	sql, args, err := t.Builder.
-		Insert(alertRepositoryName).
-		Columns(`user_id, date, message`).
-		Values(values).
-		Suffix("RETURNING id").
-		ToSql()
-	if err != nil {
-		return fmt.Errorf("AlertRepository - Create - t.Builder: %w", err)
-	}
+	sql := fmt.Sprintf("INSERT INTO public.alert (user_id, date, message, university) VALUES %s", strings.Join(values, ", "))
 
-	_, err = t.Pool.Query(ctx, sql, args...)
+	_, err := t.Pool.Query(ctx, sql)
 	if err != nil {
 		return fmt.Errorf("AlertRepository - Create - t.Pool.Query: %w", err)
 	}
@@ -45,36 +37,30 @@ func (t *AlertRepository) Create(ctx context.Context, data []entity.Alert) error
 	return nil
 }
 
-func (t *AlertRepository) FindAlert(ctx context.Context, day int64) ([]entity.Alert, error) {
+func (t *AlertRepository) FindAlert(ctx context.Context, day int64) ([]entity.AlertDBResponse, error) {
 	now := time.Now().Unix()
 
 	// Calculate the end date of the range.
 	endDate := now + (day * 24 * 60 * 60)
 
-	// Build the SQL statement.
-	sql, args, err := t.Builder.
-		Select("*").
-		From(alertRepositoryName).
-		Where(squirrel.And{
-			squirrel.GtOrEq{"date": now},
-			squirrel.Lt{"date": endDate},
-		}).
-		ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("AlertRepository - FindAlert - t.Builder: %w", err)
-	}
+	sql := fmt.Sprintf(`SELECT user_id, university, MIN(date) AS date, ARRAY_AGG(message) AS messages
+			FROM alert
+			WHERE date > %d AND date < %d
+			GROUP BY user_id, university
+			ORDER BY date ASC;`,
+		now, endDate)
 
 	// Execute the SQL statement and get the results.
-	rows, err := t.Pool.Query(ctx, sql, args...)
+	rows, err := t.Pool.Query(ctx, sql)
 	if err != nil {
 		return nil, fmt.Errorf("AlertRepository - FindAlert - t.Pool.Query: %w", err)
 	}
 
 	// Scan the results into a slice of alerts.
-	alerts := []entity.Alert{}
+	alerts := []entity.AlertDBResponse{}
 	for rows.Next() {
-		alert := entity.Alert{}
-		err := rows.Scan(&alert.ID, &alert.UserID, &alert.Date, &alert.Message)
+		alert := entity.AlertDBResponse{}
+		err := rows.Scan(&alert.UserID, &alert.University, &alert.Date, &alert.Messages)
 		if err != nil {
 			return nil, fmt.Errorf("AlertRepository - FindAlert - rows.Scan: %w", err)
 		}

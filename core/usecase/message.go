@@ -21,6 +21,7 @@ var (
 	MajorPreferences      = make(map[string][]string)
 	ResetState            = false
 	SelectedTalent        = make(map[string]entity.Talent)
+	BisonChatRequestMap   = make(map[string]entity.BisonChatRequest)
 )
 
 type MessageUseCase struct {
@@ -70,7 +71,6 @@ func (m *MessageUseCase) ProcessMessage(ctx context.Context, req entity.MessageR
 
 		if strings.EqualFold(userTempData.Feature, constant.FEATURE_UNI_ALERT) {
 			m.processUniAlert(ctx, req, userTempData.UniversityPreferences)
-			State[req.FromNo] = constant.UNI_ALERT
 			return "", err
 		} else if strings.EqualFold(userTempData.Feature, constant.FEATURE_UNI_BUDDY) {
 			UniversityPreferences[req.FromNo] = userTempData.UniversityPreferences
@@ -163,20 +163,11 @@ func (m *MessageUseCase) processUniAlert(ctx context.Context, req entity.Message
 		uniPreferences = universityPreferences
 	}
 
-	message := fmt.Sprintf("Sure thing! We've already set up reminders to keep you in the loop about important events related to your registration timeline at %s 📅 ", strings.Join(uniPreferences, "\n"))
-	reqMessage := common.PrepareMessage(req, message, "")
-	err := m.ada.SendMessage(ctx, reqMessage)
-	if err != nil {
-		m.log.Error("askUniversityPreferences Failed Send Message, err: %v", err)
-	}
-
-	time.Sleep(500 * time.Millisecond)
-	sticker := common.PrepareStickerMessage(req, "119bba90-da64-469c-92a2-7ccc76046618")
-	m.ada.SendMessage(ctx, sticker)
+	m.saveAlert(ctx, req, uniPreferences)
 }
 
 func (m *MessageUseCase) processUniConnect(ctx context.Context, req entity.MessageRequest) {
-	if len(UniversityPreferences[req.FromNo]) <= 0 && len(MajorPreferences[req.FromNo]) <= 0 {
+	if len(UniversityPreferences[req.FromNo]) <= 0 {
 		//reqMessage := common.PrepareMessage(req, fmt.Sprintf("You need to set preferences first"), "")
 		//m.ada.SendMessage(ctx, reqMessage)
 		m.askUniversityPreferences(ctx, req)
@@ -207,6 +198,83 @@ func (m *MessageUseCase) processUniConnect(ctx context.Context, req entity.Messa
 	deleteAllCache(req.FromNo)
 }
 
+func (m *MessageUseCase) saveAlert(ctx context.Context, req entity.MessageRequest, uniPreferences []string) error {
+	var events []entity.Event
+	var err error
+	listAlert := "Here are some important dates you can take notes📝:\n"
+
+	var dataAlert []entity.Alert
+
+	for _, uni := range uniPreferences {
+		var response *entity.BisonTextResponse
+		request := provideBisonTextRequest(fmt.Sprintf(constant.TemplatePromptGetUniTimeline, uni), 2048)
+		response, err = m.vertex.DoCallVertexAPIText(ctx, request, m.getAccessToken())
+		if err != nil {
+			m.log.Error("failed call DoCallVertexAPIText processUniAlert, request: %v\nerror: %v", request, err)
+			continue
+		}
+
+		var alert entity.AlertResponse
+		content := strings.ReplaceAll(response.Predictions[0].Content, "JSON", "")
+		content = strings.ReplaceAll(content, "`", "")
+		err = json.Unmarshal([]byte(content), &alert)
+		if err != nil {
+			var ev []entity.Event
+			err = json.Unmarshal([]byte(content), &ev)
+			if err != nil {
+				m.log.Error("failed call Unmarshal, data: %v\nerror: %v", content, err)
+				continue
+			}
+			alert.Events = ev
+		}
+
+		for i, ev := range alert.Events {
+			date := common.ProcessDate(ev.Date)
+			listAlert = fmt.Sprintf("%s\n%d. %s - %s", listAlert, i+1, ev.EventTitle, date.Format("02 January 2006"))
+			dataAlert = append(dataAlert, entity.Alert{
+				UserID:     req.FromNo,
+				Date:       date.Unix(),
+				Message:    ev.EventTitle,
+				University: uni,
+			})
+		}
+
+		events = append(events, alert.Events...)
+	}
+
+	if err != nil {
+		message := fmt.Sprintf("I am so sorry for the inconvenience, but I am currently experiencing some technical difficulties. \nMy team is working hard to resolve the issue as quickly as possible. In the meantime, please try again later. Thank you for your patience and understanding.")
+		reqMessage := common.PrepareMessage(req, message, "")
+		err = m.ada.SendMessage(ctx, reqMessage)
+		m.endState(ctx, req)
+		return err
+	}
+
+	message := fmt.Sprintf("Sure thing! We've already set up reminders to keep you in the loop about important events related to your registration timeline at %s 📅 ", strings.Join(uniPreferences, "\n"))
+	reqMessage := common.PrepareMessage(req, message, "")
+	err = m.ada.SendMessage(ctx, reqMessage)
+	if err != nil {
+		m.log.Error("askUniversityPreferences Failed Send Message, err: %v", err)
+	}
+
+	if len(events) > 0 {
+		time.Sleep(500 * time.Millisecond)
+		reqMessage = common.PrepareMessage(req, listAlert, "")
+		m.ada.SendMessage(ctx, reqMessage)
+
+		go m.alertRepo.Create(context.Background(), dataAlert)
+	}
+
+	time.Sleep(500 * time.Millisecond)
+	sticker := common.PrepareStickerMessage(req, "119bba90-da64-469c-92a2-7ccc76046618")
+	m.ada.SendMessage(ctx, sticker)
+
+	time.Sleep(500 * time.Millisecond)
+	m.endState(ctx, req)
+
+	return nil
+}
+
 func (m *MessageUseCase) askUniversityPreferences(ctx context.Context, req entity.MessageRequest) error {
 	reqMessage := common.PrepareMessage(req, "Which university are you dreaming of going to? 😊", "")
 	err := m.ada.SendMessage(ctx, reqMessage)
@@ -218,7 +286,7 @@ func (m *MessageUseCase) askUniversityPreferences(ctx context.Context, req entit
 }
 
 func (m *MessageUseCase) getUniversityFromMessage(ctx context.Context, message string) []string {
-	request := provideBisonTextRequest(fmt.Sprintf(constant.TemplateValidateUniversityName, message))
+	request := provideBisonTextRequest(fmt.Sprintf(constant.TemplateValidateUniversityName, message), 200)
 	response, err := m.vertex.DoCallVertexAPIText(ctx, request, m.getAccessToken())
 	if err != nil {
 		m.log.Error("failed call DoCallVertexAPIText, request: %v\nerror: %v", request, err)
@@ -237,7 +305,7 @@ func (m *MessageUseCase) getUniversityFromMessage(ctx context.Context, message s
 }
 
 func (m *MessageUseCase) getMajorFromMessage(ctx context.Context, message string) []string {
-	request := provideBisonTextRequest(fmt.Sprintf(constant.TemplateValidateMajor, message))
+	request := provideBisonTextRequest(fmt.Sprintf(constant.TemplateValidateMajor, message), 200)
 	response, err := m.vertex.DoCallVertexAPIText(ctx, request, m.getAccessToken())
 	if err != nil {
 		m.log.Error("failed call DoCallVertexAPIText, request: %v\nerror: %v", request, err)
@@ -253,7 +321,7 @@ func (m *MessageUseCase) getMajorFromMessage(ctx context.Context, message string
 }
 
 func (m *MessageUseCase) classifyMessage(ctx context.Context, message string) (*entity.UserTemporaryData, error) {
-	request := provideBisonTextRequest(fmt.Sprintf(constant.TemplatePromptClassify, message))
+	request := provideBisonTextRequest(fmt.Sprintf(constant.TemplatePromptClassify, message), 200)
 	response, err := m.vertex.DoCallVertexAPIText(ctx, request, m.getAccessToken())
 	if err != nil {
 		m.log.Error("failed call DoCallVertexAPIText, request: %v\nerror: %v", request, err)
@@ -273,7 +341,13 @@ func (m *MessageUseCase) classifyMessage(ctx context.Context, message string) (*
 }
 
 func (m *MessageUseCase) processUniBuddy(ctx context.Context, req entity.MessageRequest) {
-	bisonChatReq := initBisonChatUniBuddyRequest(UniversityPreferences[req.FromNo], MajorPreferences[req.FromNo])
+	bisonChatReq := entity.BisonChatRequest{}
+	if val, ok := BisonChatRequestMap[req.FromNo]; !ok {
+		bisonChatReq = initBisonChatUniBuddyRequest(UniversityPreferences[req.FromNo], MajorPreferences[req.FromNo])
+	} else {
+		bisonChatReq = val
+	}
+
 	var messages []entity.Message
 	if val, ok := UniBuddy[req.FromNo]; ok {
 		messages = val
@@ -468,7 +542,6 @@ func initBisonChatUniBuddyRequest(uniPreferences, majorPreferences []string) ent
 func (m *MessageUseCase) handleInteractiveMessage(ctx context.Context, req entity.MessageRequest) {
 	if req.Data.Text == constant.ButtonUniAlert {
 		m.processUniAlert(ctx, req, UniversityPreferences[req.FromNo])
-		State[req.FromNo] = constant.UNI_ALERT
 		return
 	} else if req.Data.Text == constant.ButtonUniBuddy {
 		m.processUniBuddy(ctx, req)
@@ -503,7 +576,7 @@ func (m *MessageUseCase) handleInteractiveMessage(ctx context.Context, req entit
 	}
 }
 
-func provideBisonTextRequest(prompt string) entity.BisonTextRequest {
+func provideBisonTextRequest(prompt string, maxOutput float64) entity.BisonTextRequest {
 	return entity.BisonTextRequest{
 		Instances: []entity.InstanceBisonText{
 			{
@@ -512,7 +585,7 @@ func provideBisonTextRequest(prompt string) entity.BisonTextRequest {
 		},
 		Parameters: entity.Parameter{
 			Temperature:     0.2,
-			MaxOutputTokens: 200,
+			MaxOutputTokens: maxOutput,
 			TopP:            0.8,
 			TopK:            40,
 		},
@@ -595,4 +668,33 @@ func (m *MessageUseCase) PaymentCallback(ctx context.Context, phone string) {
 
 	msg = common.PrepareMessage(req, "Have a fantastic day! 🎉 If you ever need assistance in the future, don't hesitate to reach out. Take care!", "")
 	m.ada.SendMessage(ctx, msg)
+}
+
+func (m *MessageUseCase) RunCron(ctx context.Context) {
+	req := entity.MessageRequest{
+		FromNo:      "6282122277701",
+		Platform:    "WA",
+		AccountName: "UNIFIED",
+		AccountNo:   "60136958751",
+		Data:        entity.DataRequest{},
+	}
+
+	res, err := m.alertRepo.FindAlert(ctx, 365)
+	if err != nil {
+		return
+	}
+
+	now := time.Now()
+	for _, v := range res {
+		req.FromNo = v.UserID
+		unixTimestamp := v.Date
+		message := "🚨 Don't forget about today's Document Application Deadline for Stanford University!🚨"
+		if !time.Unix(unixTimestamp, 0).Equal(now) {
+			daysDiff := int(time.Unix(unixTimestamp, 0).Sub(now).Hours() / 24)
+			message = fmt.Sprintf("%d more days towards %s for %s! Don't forget to prepare 😉", daysDiff, v.Messages[0], v.University)
+		}
+
+		msg := common.PrepareMessage(req, message, "")
+		m.ada.SendMessage(ctx, msg)
+	}
 }

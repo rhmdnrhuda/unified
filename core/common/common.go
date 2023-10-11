@@ -70,6 +70,21 @@ func IsReset(str string) bool {
 	return false
 }
 
+func ProcessDate(dateStr string) time.Time {
+	date, err := time.Parse("2006/01/02", dateStr)
+	if err != nil {
+		fmt.Println(err)
+		return time.Time{}
+	}
+
+	now := time.Now()
+	if date.Before(now) {
+		date = date.AddDate(1, 0, 0)
+	}
+
+	return date
+}
+
 func ToString(data interface{}) string {
 	return fmt.Sprintf("%v", data)
 }

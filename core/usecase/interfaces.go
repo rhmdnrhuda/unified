@@ -39,6 +39,7 @@ type (
 	Message interface {
 		ProcessMessage(ctx context.Context, req entity.MessageRequest) (string, error)
 		PaymentCallback(ctx context.Context, phone string)
+		RunCron(ctx context.Context)
 	}
 
 	UserRepository interface {
@@ -49,7 +50,7 @@ type (
 
 	AlertRepository interface {
 		Create(ctx context.Context, data []entity.Alert) error
-		FindAlert(ctx context.Context, day int64) ([]entity.Alert, error)
+		FindAlert(ctx context.Context, day int64) ([]entity.AlertDBResponse, error)
 	}
 
 	Cache interface {

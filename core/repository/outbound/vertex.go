@@ -21,7 +21,7 @@ func NewVertexOutbound(cfg *config.Config) *VertexOutbound {
 	return &VertexOutbound{
 		cfg: cfg,
 		client: http.Client{
-			Timeout: time.Second * 10,
+			Timeout: time.Second * 60,
 		},
 	}
 }
@@ -44,7 +44,17 @@ func (v *VertexOutbound) DoCallVertexAPIChat(ctx context.Context, request entity
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
-	resp, err := v.client.Do(req)
+	var resp *http.Response
+
+	// Retry max 5 times when error != nil
+	for i := 0; i < 5; i++ {
+		resp, err = v.client.Do(req)
+		if err == nil {
+			break
+		}
+	}
+
+	// If the request failed after 5 retries, return the error
 	if err != nil {
 		return nil, err
 	}
@@ -81,9 +91,14 @@ func (v *VertexOutbound) DoCallVertexAPIText(ctx context.Context, request entity
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
-	resp, err := v.client.Do(req)
-	if err != nil {
-		return nil, err
+	var resp *http.Response
+
+	// Retry max 5 times when error != nil
+	for i := 0; i < 5; i++ {
+		resp, err = v.client.Do(req)
+		if err == nil {
+			break
+		}
 	}
 
 	defer resp.Body.Close()

@@ -53,3 +53,12 @@ type MessageResponse struct {
 	Status int64    `json:"status"`
 	Data   []string `json:"data"`
 }
+
+type Event struct {
+	EventTitle string `json:"event_title"`
+	Date       string `json:"date"`
+}
+
+type AlertResponse struct {
+	Events []Event `json:"events"`
+}
