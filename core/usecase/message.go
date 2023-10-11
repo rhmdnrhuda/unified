@@ -167,7 +167,7 @@ func (m *MessageUseCase) processUniAlert(ctx context.Context, req entity.Message
 }
 
 func (m *MessageUseCase) processUniConnect(ctx context.Context, req entity.MessageRequest) {
-	if len(UniversityPreferences[req.FromNo]) <= 0 {
+	if len(UniversityPreferences[req.FromNo]) <= 0 && len(MajorPreferences[req.FromNo]) <= 0 {
 		//reqMessage := common.PrepareMessage(req, fmt.Sprintf("You need to set preferences first"), "")
 		//m.ada.SendMessage(ctx, reqMessage)
 		m.askUniversityPreferences(ctx, req)
