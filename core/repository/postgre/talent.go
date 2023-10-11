@@ -2,9 +2,9 @@ package postgre
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/Masterminds/squirrel"
-	"github.com/georgysavva/scany/pgxscan"
 	"github.com/rhmdnrhuda/unified/core/entity"
 	"strings"
 	"time"
@@ -72,73 +72,41 @@ func (t *TalentRepository) Update(ctx context.Context, data *entity.Talent) erro
 }
 
 func (t *TalentRepository) FindTalentByUniversityAndMajor(ctx context.Context, universities, majors []string) (entity.Talent, error) {
-	talent := entity.Talent{}
-
-	// Create placeholders for the universities and majors using the `ANY` operator.
-	// This allows us to use the `IN` clause with arrays.
-	uniPlaceholders := make([]string, len(universities))
-	majorPlaceholders := make([]string, len(majors))
-	args := make([]interface{}, 0, len(universities)+len(majors))
-
-	for i, u := range universities {
-		// Check if the university is empty. If it is, skip it.
-		if u == "" {
-			continue
-		}
-
-		uniPlaceholders[i] = fmt.Sprintf("$%d", len(args)+1)
-		args = append(args, u)
-	}
-
-	for i, m := range majors {
-		// Check if the major is empty. If it is, skip it.
-		if m == "" {
-			continue
-		}
-
-		majorPlaceholders[i] = fmt.Sprintf("$%d", len(args)+1)
-		args = append(args, m)
-	}
+	talents := []entity.Talent{}
 
 	sql := fmt.Sprintf(`
-       SELECT *
+       SELECT name, major, status, university
        FROM %s
-       WHERE university = ANY(ARRAY[%s]) OR major = ANY(ARRAY[%s])
-       LIMIT 1;
-    `, talentRepositoryName, strings.Join(uniPlaceholders, ","), strings.Join(majorPlaceholders, ","))
-
-	// If there are no universities or majors, return an empty talent.
-	if len(uniPlaceholders) == 0 && len(majorPlaceholders) == 0 {
-		sql = fmt.Sprintf(`
-       SELECT *
-       FROM %s
-       LIMIT 1;
     `, talentRepositoryName)
-	} else if len(uniPlaceholders) == 0 {
-		sql = fmt.Sprintf(`
-       SELECT *
-       FROM %s
-       WHERE major = ANY(ARRAY[%s])
-       LIMIT 1;
-    `, talentRepositoryName, strings.Join(majorPlaceholders, ","))
-	} else if len(majorPlaceholders) == 0 {
-		sql = fmt.Sprintf(`
-       SELECT *
-       FROM %s
-       WHERE university = ANY(ARRAY[%s])
-       LIMIT 1;
-    `, talentRepositoryName, strings.Join(uniPlaceholders, ","))
-	}
 
-	row, err := t.Pool.Query(ctx, sql, args...)
+	rows, err := t.Pool.Query(ctx, sql)
 	if err != nil {
-		return talent, fmt.Errorf("TalentRepository - FindTalentByUniversityAndMajor - t.Query: %w", err)
+		return entity.Talent{}, fmt.Errorf("TalentRepository - FindTalentByUniversityAndMajor - t.Query: %w", err)
 	}
 
-	err = pgxscan.ScanOne(&talent, row)
-	if err != nil {
-		return talent, fmt.Errorf("TalentRepository - FindTalentByUniversityAndMajor - t.ScanOne: %w", err)
+	for rows.Next() {
+		talent := entity.Talent{}
+		err := rows.Scan(&talent.Name, &talent.Major, &talent.Status, &talent.University)
+		if err != nil {
+			return entity.Talent{}, fmt.Errorf("AlertRepository - FindAlert - rows.Scan: %w", err)
+		}
+
+		talents = append(talents, talent)
 	}
 
-	return talent, nil
+	for _, talent := range talents {
+		for _, university := range universities {
+			if strings.EqualFold(talent.University, university) || strings.Contains(university, talent.University) || strings.Contains(talent.University, university) {
+				return talent, nil
+			}
+		}
+
+		for _, major := range majors {
+			if strings.EqualFold(talent.Major, major) || strings.Contains(major, talent.Major) || strings.Contains(talent.Major, major) {
+				return talent, nil
+			}
+		}
+	}
+
+	return entity.Talent{}, errors.New("empty result")
 }
